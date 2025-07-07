@@ -30,9 +30,9 @@ RUN apt-get update && \
 RUN curl -L https://foundry.paradigm.xyz | bash && . ~/.bashrc && ~/.foundry/bin/foundryup -i 1.2.3
 WORKDIR /workspace
 COPY contracts-legacy/package.json contracts-legacy/yarn.lock contracts-legacy/
-RUN cd contracts-legacy && yarn install
+RUN cd contracts-legacy && yarn install --network-timeout 100000
 COPY contracts/package.json contracts/yarn.lock contracts/
-RUN cd contracts && yarn install
+RUN cd contracts && yarn install --network-timeout 100000
 COPY contracts-legacy contracts-legacy/
 COPY contracts-local contracts-local/
 COPY contracts contracts/

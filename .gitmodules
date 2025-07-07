@@ -1,7 +1,7 @@
 [submodule "go-ethereum"]
 	path = go-ethereum
-	url = https://github.com/OffchainLabs/go-ethereum.git
-	commit = 8a5871262c201f06169a0e5422b58aa482f0c4fb
+	url = https://github.com/SyndicateProtocol/go-ethereum
+	branch = release-eigenda-v3.7.6
 [submodule "arbitrator/wasm-libraries/soft-float/SoftFloat"]
 	path = arbitrator/wasm-libraries/soft-float/SoftFloat
 	url = https://github.com/OffchainLabs/SoftFloat.git

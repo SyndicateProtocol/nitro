@@ -185,7 +185,7 @@ func ProduceBlock(
 	runCtx *core.MessageRunContext,
 ) (*types.Block, types.Receipts, error) {
 	chainConfig := chainContext.Config()
-	txes, err := ParseL2Transactions(message, chainConfig.ChainID)
+	txes, err := ParseL2Transactions(message, chainConfig.ChainID, chainConfig.ArbitrumChainParams.Syndicate)
 	if err != nil {
 		log.Warn("error parsing incoming message", "err", err)
 		txes = types.Transactions{}
