@@ -30,6 +30,8 @@ RUN apt-get update && \
 RUN curl -L https://foundry.paradigm.xyz | bash && . ~/.bashrc && ~/.foundry/bin/foundryup -i 1.0.0
 WORKDIR /workspace
 COPY contracts-legacy/package.json contracts-legacy/yarn.lock contracts-legacy/
+RUN corepack enable
+RUN yarn set version stable 
 RUN cd contracts-legacy && yarn install
 COPY contracts/package.json contracts/yarn.lock contracts/
 RUN cd contracts && yarn install
