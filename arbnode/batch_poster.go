@@ -44,8 +44,8 @@ import (
 	"github.com/offchainlabs/nitro/arbutil"
 	"github.com/offchainlabs/nitro/cmd/chaininfo"
 	"github.com/offchainlabs/nitro/cmd/genericconf"
-	"github.com/offchainlabs/nitro/eigenda"
 	"github.com/offchainlabs/nitro/daprovider"
+	"github.com/offchainlabs/nitro/eigenda"
 	"github.com/offchainlabs/nitro/execution"
 	"github.com/offchainlabs/nitro/util"
 	"github.com/offchainlabs/nitro/util/arbmath"
@@ -269,7 +269,7 @@ var DefaultBatchPosterConfig = BatchPosterConfig{
 	// This default is overridden for L3 chains in applyChainParameters in cmd/nitro/nitro.go
 	EnableEigenDAFailover: false,
 	MaxSize:               100000,
-	MaxEigenDABatchSize:   16_777_216,
+	MaxEigenDABatchSize:   16_252_897,
 	// The Max4844BatchSize should be calculated from the values from L1 chain configs
 	// using the eip4844 utility package from go-ethereum.
 	// The default value of 0 causes the batch poster to use the value from go-ethereum.

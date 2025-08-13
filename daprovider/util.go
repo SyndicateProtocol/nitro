@@ -45,6 +45,7 @@ func RecordPreimagesTo(preimages PreimagesMap) PreimageRecorder {
 
 var (
 	ErrNoBlobReader          = errors.New("blob batch payload was encountered but no BlobReader was configured")
+	ErrNoEigenDAReader       = errors.New("eigenda batch payload was encountered but no EigenDA reader was configured")
 	ErrInvalidBlobDataFormat = errors.New("blob batch data is not a list of hashes as expected")
 	ErrSeqMsgValidation      = errors.New("error validating recovered payload from batch")
 )
@@ -85,6 +86,16 @@ var DefaultDASRetentionPeriod time.Duration = time.Hour * 24 * 15
 
 // hasBits returns true if `checking` has all `bits`
 func hasBits(checking byte, bits byte) bool {
+	// NOTE: This is done to mitigate a bug where the
+	// bitwise AND between EigenDAMessageHeaderFlag and other flag values would return true
+	// when doing the low-level check - resulting in this function to return true
+	// from other dapReaders and cause terminal errors since an EigenDA message type
+	// would be passed into e.g an AnyTrust reader
+	// assuming 0xed for the message header byte is a fundamental design flaw
+	if checking == EigenDAMessageHeaderFlag && bits != EigenDAMessageHeaderFlag {
+		return false
+	}
+
 	return (checking & bits) == bits
 }
 
@@ -110,6 +121,10 @@ func IsBlobHashesHeaderByte(header byte) bool {
 
 func IsBrotliMessageHeaderByte(b uint8) bool {
 	return b == BrotliMessageHeaderByte
+}
+
+func IsEigenDAMessageHeaderByte(header byte) bool {
+	return hasBits(header, EigenDAMessageHeaderFlag)
 }
 
 // IsKnownHeaderByte returns true if the supplied header byte has only known bits
