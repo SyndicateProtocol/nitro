@@ -127,11 +127,11 @@ jobs:
 
       - name: Build
         env:
-        run: make build test-go-deps -j8
+        run: make build test-go-deps -j2
 
       - name: Build all lint dependencies
         env:
-        run: make -j8 build-node-deps
+        run: make -j2 build-node-deps
       
       # TODO: re-enable
       # - name: Lint
