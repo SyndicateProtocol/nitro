@@ -7,7 +7,8 @@ on:
   pull_request:
   push:
     branches:
-      - master
+      - eigenda-v3.6.4
+      - eigenda
   schedule:
     # Run at 00:00 AM UTC
     - cron: '0 0 * * *'
@@ -16,7 +17,7 @@ jobs:
   # Only run on schedule AND main branch
   tests-scheduled:
     name: Scheduled tests
-    runs-on: ubuntu-8
+    runs-on: linux-2xl
 
     services:
       redis:
@@ -179,19 +180,22 @@ jobs:
           name: ${{ matrix.test-mode }}-full.log
           path: full.log
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        with:
-          fail_ci_if_error: false
-          files: ./coverage.txt,./coverage-redis.txt
-          verbose: false
-          token: ${{ secrets.CODECOV_TOKEN }}
+      # NOTE: Maintaining code coverage is something that the EigenDA team need not
+      #       do
+      #
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v2
+      #   with:
+      #     fail_ci_if_error: false
+      #     files: ./coverage.txt,./coverage-redis.txt
+      #     verbose: false
+      #     token: ${{ secrets.CODECOV_TOKEN }}
 
 
   # Only run this job if files in bold/legacy/ are modified
   tests-pr:
     name: PR modified files tests
-    runs-on: ubuntu-8
+    runs-on: linux-2xl
     if: github.event_name == 'pull_request'
     
     permissions:
@@ -372,18 +376,22 @@ jobs:
           verbose: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  notify-on-failure:
-    name: Notify Slack on failure
-    needs: [tests-scheduled]
-    runs-on: ubuntu-latest
-    if: ${{ failure() }}
-    steps:
-      - name: Send Slack notification
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          errors: true
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload: |
-            "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
-            "text": "⚠️ CI job failed! ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+  # NOTE: slack notifications on error is purely an offchain labs function
+  #       and serves no value for downstream mgmt
+  #
+  #
+  # notify-on-failure:
+  #   name: Notify Slack on failure
+  #   needs: [tests-scheduled]
+  #   runs-on: ubuntu-latest
+  #   if: ${{ failure() }}
+  #   steps:
+  #     - name: Send Slack notification
+  #       uses: slackapi/slack-github-action@v2.0.0
+  #       with:
+  #         errors: true
+  #         method: chat.postMessage
+  #         token: ${{ secrets.SLACK_BOT_TOKEN }}
+  #         payload: |
+  #           "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
+  #           "text": "⚠️ CI job failed! ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",

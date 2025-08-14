@@ -7,8 +7,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/offchainlabs/nitro/daprovider"
 	"github.com/offchainlabs/nitro/arbutil"
+	"github.com/offchainlabs/nitro/daprovider"
 )
 
 func NewReaderForEigenDA(reader EigenDAReader) *readerForEigenDA {
@@ -20,7 +20,7 @@ type readerForEigenDA struct {
 }
 
 func (d *readerForEigenDA) IsValidHeaderByte(ctx context.Context, headerByte byte) bool {
-	return IsEigenDAMessageHeaderByte(headerByte)
+	return daprovider.IsEigenDAMessageHeaderByte(headerByte)
 }
 
 func (d *readerForEigenDA) RecoverPayloadFromBatch(

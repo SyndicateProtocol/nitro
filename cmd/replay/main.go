@@ -32,10 +32,10 @@ import (
 	"github.com/offchainlabs/nitro/arbstate"
 	"github.com/offchainlabs/nitro/arbutil"
 	"github.com/offchainlabs/nitro/cmd/chaininfo"
-	"github.com/offchainlabs/nitro/eigenda"
 	"github.com/offchainlabs/nitro/daprovider"
 	"github.com/offchainlabs/nitro/daprovider/das/dastree"
 	"github.com/offchainlabs/nitro/daprovider/das/dasutil"
+	"github.com/offchainlabs/nitro/eigenda"
 	"github.com/offchainlabs/nitro/gethhook"
 	"github.com/offchainlabs/nitro/wavmio"
 )
@@ -244,13 +244,12 @@ func main() {
 		}
 		return wavmio.ReadInboxMessage(batchNum), nil
 	}
-	readMessage := func(dasEnabled bool, eigenDAEnabled bool) *arbostypes.MessageWithMetadata {
+	readMessage := func(dasEnabled bool) *arbostypes.MessageWithMetadata {
 		var delayedMessagesRead uint64
 		if lastBlockHeader != nil {
 			delayedMessagesRead = lastBlockHeader.Nonce.Uint64()
 		}
 		var dasReader dasutil.DASReader
-		var eigenDAReader *EigenDAPreimageReader
 		var dasKeysetFetcher dasutil.DASKeysetFetcher
 		if dasEnabled {
 			// DAS batch and keysets are all together in the same preimage binary.
@@ -258,20 +257,16 @@ func main() {
 			dasKeysetFetcher = &PreimageDASReader{}
 		}
 
-		if eigenDAEnabled {
-			eigenDAReader = &EigenDAPreimageReader{}
-		}
 		backend := WavmInbox{}
 		var keysetValidationMode = daprovider.KeysetPanicIfInvalid
 		if backend.GetPositionWithinMessage() > 0 {
 			keysetValidationMode = daprovider.KeysetDontValidate
 		}
 		var dapReaders []daprovider.Reader
+		dapReaders = append(dapReaders, eigenda.NewReaderForEigenDA(&EigenDAPreimageReader{}))
+
 		if dasReader != nil {
 			dapReaders = append(dapReaders, dasutil.NewReaderForDAS(dasReader, dasKeysetFetcher))
-		}
-		if eigenDAReader != nil {
-			dapReaders = append(dapReaders, eigenda.NewReaderForEigenDA(eigenDAReader))
 		}
 
 		dapReaders = append(dapReaders, daprovider.NewReaderForBlobReader(&BlobPreimageReader{}))
@@ -331,7 +326,7 @@ func main() {
 			}
 		}
 
-		message := readMessage(chainConfig.ArbitrumChainParams.DataAvailabilityCommittee, chainConfig.ArbitrumChainParams.EigenDA)
+		message := readMessage(chainConfig.ArbitrumChainParams.DataAvailabilityCommittee)
 
 		chainContext := WavmChainContext{chainConfig: chainConfig}
 		newBlock, _, err = arbos.ProduceBlock(message.Message, message.DelayedMessagesRead, lastBlockHeader, statedb, chainContext, false, core.MessageReplayMode)
@@ -341,7 +336,7 @@ func main() {
 	} else {
 		// Initialize ArbOS with this init message and create the genesis block.
 
-		message := readMessage(false, false)
+		message := readMessage(false)
 
 		initMessage, err := message.Message.ParseInitMessage()
 		if err != nil {
