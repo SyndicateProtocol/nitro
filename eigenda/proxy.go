@@ -20,6 +20,7 @@ func NewEigenDAProxyClient(rpcUrl string) *EigenDAProxyClient {
 	return &EigenDAProxyClient{client: c}
 }
 
+// NOTE: This method will be deprecated in the V2 migration release
 func (c *EigenDAProxyClient) Put(ctx context.Context, data []byte) (*disperser.BlobInfo, error) {
 	cert, err := c.client.SetData(ctx, data)
 	if err != nil {
@@ -42,6 +43,8 @@ func (c *EigenDAProxyClient) Get(ctx context.Context, blobInfo *disperser.BlobIn
 	}
 
 	// TODO: support more strict versioning
+	//       this is actually not needed for EigenDA V1
+	//       & will be deprecated by V2 integration with Arbitrum ALT DA spec
 	commitWithVersion := append([]byte{0x0}, commitment...)
 
 	data, err := c.client.GetData(ctx, commitWithVersion)
@@ -56,5 +59,6 @@ func (c *EigenDAProxyClient) Get(ctx context.Context, blobInfo *disperser.BlobIn
 type ProxyClient interface {
 	Health() error
 	GetData(ctx context.Context, cert []byte) ([]byte, error)
+	// NOTE: This method will be deprecated in the V2 migration release
 	SetData(ctx context.Context, b []byte) ([]byte, error)
 }
