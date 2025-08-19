@@ -83,8 +83,13 @@ var (
 const (
 	batchPosterSimpleRedisLockKey = "node.batch-poster.redis-lock.simple-lock-key"
 
-	sequencerBatchPostMethodName                    = "addSequencerL2BatchFromOrigin0"
-	sequencerBatchPostWithBlobsMethodName           = "addSequencerL2BatchFromBlobs"
+	sequencerBatchPostMethodName          = "addSequencerL2BatchFromOrigin0"
+	sequencerBatchPostWithBlobsMethodName = "addSequencerL2BatchFromBlobs"
+	// NOTE: This method will be deprecated in the V2 migration release
+	//       as will all EigenDA V1 specific batch posting and failover logic.
+	//       The EigenDA V1 access point will be removed from the Sequencer Inbox entirely
+	//       with backwards compatibility only being supported for EigenDAV1Cert -> Rollup Payload
+	///      derivation.
 	sequencerBatchPostWithEigendaMethodName         = "addSequencerL2BatchFromEigenDA"
 	sequencerBatchPostDelayProofMethodName          = "addSequencerL2BatchFromOriginDelayProof"
 	sequencerBatchPostWithBlobsDelayProofMethodName = "addSequencerL2BatchFromBlobsDelayProof"
@@ -232,9 +237,11 @@ func DangerousBatchPosterConfigAddOptions(prefix string, f *pflag.FlagSet) {
 func BatchPosterConfigAddOptions(prefix string, f *pflag.FlagSet) {
 	f.Bool(prefix+".enable", DefaultBatchPosterConfig.Enable, "enable posting batches to l1")
 	f.Bool(prefix+".disable-dap-fallback-store-data-on-chain", DefaultBatchPosterConfig.DisableDapFallbackStoreDataOnChain, "If unable to batch to DA provider, disable fallback storing data on chain")
+	// NOTE: This CLI argument will be removed in the V2 migration release
 	f.Bool(prefix+".enable-eigenda-failover", DefaultBatchPosterConfig.EnableEigenDAFailover, "If EigenDA fails, failover to AnyTrust (if enabled) or native ETH DA")
 	f.Int(prefix+".max-size", DefaultBatchPosterConfig.MaxSize, "maximum estimated compressed batch size")
 	f.Int(prefix+".max-4844-batch-size", DefaultBatchPosterConfig.Max4844BatchSize, "maximum estimated compressed 4844 blob enabled batch size")
+	// NOTE: This CLI argument will be removed in the V2 migration release
 	f.Int(prefix+".max-eigenda-batch-size", DefaultBatchPosterConfig.MaxEigenDABatchSize, "maximum EigenDA blob enabled batch size")
 	f.Duration(prefix+".max-delay", DefaultBatchPosterConfig.MaxDelay, "maximum batch posting delay")
 	f.Bool(prefix+".wait-for-max-delay", DefaultBatchPosterConfig.WaitForMaxDelay, "wait for the max batch delay, even if the batch is full")

@@ -14,6 +14,7 @@ const (
 )
 
 type EigenDAWriter interface {
+	// NOTE: This method will be deprecated in the V2 migration release
 	Store(context.Context, []byte) (*EigenDAV1Cert, error)
 	Serialize(eigenDAV1Cert *EigenDAV1Cert) ([]byte, error)
 }
@@ -59,6 +60,7 @@ func (e *EigenDA) QueryBlob(ctx context.Context, cert *EigenDAV1Cert, domainFilt
 }
 
 // Store disperses a blob to EigenDA and returns the appropriate EigenDAV1Cert or certificate values
+// NOTE: This method will be deprecated in the V2 migration release
 func (e *EigenDA) Store(ctx context.Context, data []byte) (*EigenDAV1Cert, error) {
 	log.Info("Dispersing batch as blob to EigenDA", "dataLength", len(data))
 	var v1Cert = &EigenDAV1Cert{}
