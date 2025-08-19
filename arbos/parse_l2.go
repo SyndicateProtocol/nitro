@@ -121,7 +121,7 @@ func parseL2Message(rd io.Reader, poster common.Address, timestamp uint64, reque
 			var err error
 			poster, err = util.AddressFromReader(rd)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to parse syndicate poster: %w", err)
 			}
 		}
 		tx, err := parseUnsignedTx(rd, poster, requestId, chainId, L2MessageKind_UnsignedUserTx)
@@ -134,11 +134,11 @@ func parseL2Message(rd io.Reader, poster common.Address, timestamp uint64, reque
 			var err error
 			poster, err = util.AddressFromReader(rd)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to parse syndicate poster: %w", err)
 			}
 			id, err := util.HashFromReader(rd)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to parse syndicate request id: %w", err)
 			}
 			requestId = &id
 		}
