@@ -49,6 +49,8 @@ import (
 	"github.com/offchainlabs/nitro/arbos/l2pricing"
 	"github.com/offchainlabs/nitro/arbstate"
 	"github.com/offchainlabs/nitro/cmd/chaininfo"
+	"github.com/offchainlabs/nitro/daprovider"
+	"github.com/offchainlabs/nitro/eigenda"
 	"github.com/offchainlabs/nitro/execution/gethexec"
 	"github.com/offchainlabs/nitro/staker"
 	"github.com/offchainlabs/nitro/staker/bold"
@@ -61,25 +63,34 @@ import (
 	"github.com/offchainlabs/nitro/validator/valnode"
 )
 
-// TODO: https://github.com/Layr-Labs/nitro/issues/66
-// func TestChallengeProtocolBOLDReadInboxChallenge(t *testing.T) {
-// 	testChallengeProtocolBOLD(t)
-// }
+// Optional EigenDABoldBatchOpts toggle/config.
+type EigenDABoldBatchOpts struct {
+	RPC string
+}
 
-// TODO: https://github.com/Layr-Labs/nitro/issues/66
-// func TestChallengeProtocolBOLDStartStepChallenge(t *testing.T) {
-// 	opts := []server_arb.SpawnerOption{
-// 		server_arb.WithWrapper(func(inner server_arb.MachineInterface) server_arb.MachineInterface {
-// 			// This wrapper is applied after the BOLD wrapper, so step 0 is the finished machine.
-// 			// Modifying its hash results in invalid inclusion proofs for the evil validator,
-// 			// so we start modifying hashes at step 1 (the first machine step in the running state).
-// 			return NewIncorrectIntermediateMachine(inner, 1)
-// 		}),
-// 	}
-// 	testChallengeProtocolBOLD(t, opts...)
-// }
+func TestChallengeProtocolBOLDReadEigenDAInboxChallenge(t *testing.T) {
+	testChallengeProtocolBOLD(t, &EigenDABoldBatchOpts{
+		RPC: "http://127.0.0.1:4242",
+	})
+}
 
-func testChallengeProtocolBOLD(t *testing.T, spawnerOpts ...server_arb.SpawnerOption) {
+func TestChallengeProtocolBOLDReadInboxChallenge(t *testing.T) {
+	testChallengeProtocolBOLD(t, nil)
+}
+
+func TestChallengeProtocolBOLDStartStepChallenge(t *testing.T) {
+	opts := []server_arb.SpawnerOption{
+		server_arb.WithWrapper(func(inner server_arb.MachineInterface) server_arb.MachineInterface {
+			// This wrapper is applied after the BOLD wrapper, so step 0 is the finished machine.
+			// Modifying its hash results in invalid inclusion proofs for the evil validator,
+			// so we start modifying hashes at step 1 (the first machine step in the running state).
+			return NewIncorrectIntermediateMachine(inner, 1)
+		}),
+	}
+	testChallengeProtocolBOLD(t, nil, opts...)
+}
+
+func testChallengeProtocolBOLD(t *testing.T, eigenDAOpt *EigenDABoldBatchOpts, spawnerOpts ...server_arb.SpawnerOption) {
 	goodDir, err := os.MkdirTemp("", "good_*")
 	Require(t, err)
 	evilDir, err := os.MkdirTemp("", "evil_*")
@@ -116,6 +127,7 @@ func testChallengeProtocolBOLD(t *testing.T, spawnerOpts ...server_arb.SpawnerOp
 		nil,
 		sconf,
 		l2info,
+		eigenDAOpts != nil,
 	)
 	defer requireClose(t, l1stack)
 	defer l2nodeA.StopAndWait()
@@ -138,6 +150,7 @@ func testChallengeProtocolBOLD(t *testing.T, spawnerOpts ...server_arb.SpawnerOp
 		nil,
 		sconf,
 		stakeTokenAddr,
+		eigenDAOpts != nil,
 	)
 	defer l2nodeB.StopAndWait()
 
@@ -159,13 +172,26 @@ func testChallengeProtocolBOLD(t *testing.T, spawnerOpts ...server_arb.SpawnerOp
 	_, valStack := createTestValidationNode(t, ctx, &valCfg)
 	blockValidatorConfig := staker.TestBlockValidatorConfig
 
+	var dapReaders []daprovider.Reader = nil
+	if eigenDAOpt != nil {
+		eigenDAService, err := eigenda.NewEigenDA(
+			&eigenda.EigenDAConfig{
+				Enable: true,
+				Rpc:    eigenDAOpt.RPC,
+			})
+		if err != nil {
+			panic(err)
+		}
+		dapReaders = append(dapReaders, eigenda.NewReaderForEigenDA(eigenDAService))
+	}
+
 	statelessA, err := staker.NewStatelessBlockValidator(
 		l2nodeA.InboxReader,
 		l2nodeA.InboxTracker,
 		l2nodeA.TxStreamer,
 		l2nodeA.ExecutionRecorder,
 		l2nodeA.ArbDB,
-		nil,
+		dapReaders,
 		StaticFetcherFrom(t, &blockValidatorConfig),
 		valStack,
 		valCfg.Wasm.RootPath,
@@ -174,14 +200,13 @@ func testChallengeProtocolBOLD(t *testing.T, spawnerOpts ...server_arb.SpawnerOp
 	err = statelessA.Start(ctx)
 	Require(t, err)
 	_, valStackB := createTestValidationNode(t, ctx, &valCfg, spawnerOpts...)
-
 	statelessB, err := staker.NewStatelessBlockValidator(
 		l2nodeB.InboxReader,
 		l2nodeB.InboxTracker,
 		l2nodeB.TxStreamer,
 		l2nodeB.ExecutionRecorder,
 		l2nodeB.ArbDB,
-		nil,
+		dapReaders,
 		StaticFetcherFrom(t, &blockValidatorConfig),
 		valStackB,
 		valCfg.Wasm.RootPath,
@@ -308,19 +333,19 @@ func testChallengeProtocolBOLD(t *testing.T, spawnerOpts ...server_arb.SpawnerOp
 	totalMessagesPosted := int64(0)
 	numMessagesPerBatch := int64(5)
 	divergeAt := int64(-1)
-	makeBoldBatch(t, l2nodeA, l2info, l1client, &sequencerTxOpts, honestSeqInboxBinding, honestSeqInbox, numMessagesPerBatch, divergeAt)
+	makeBoldBatch(t, l2nodeA, l2info, l1client, &sequencerTxOpts, honestSeqInboxBinding, honestSeqInbox, numMessagesPerBatch, divergeAt, eigenDAOpt)
 	l2info.Accounts["Owner"].Nonce.Store(0)
-	makeBoldBatch(t, l2nodeB, l2info, l1client, &sequencerTxOpts, evilSeqInboxBinding, evilSeqInbox, numMessagesPerBatch, divergeAt)
+	makeBoldBatch(t, l2nodeB, l2info, l1client, &sequencerTxOpts, evilSeqInboxBinding, evilSeqInbox, numMessagesPerBatch, divergeAt, eigenDAOpt)
 	totalMessagesPosted += numMessagesPerBatch
 
 	// Next, we post another batch, this time containing more messages.
 	// We diverge at message index 5 within the evil node's batch.
 	l2info.Accounts["Owner"].Nonce.Store(5)
 	numMessagesPerBatch = int64(10)
-	makeBoldBatch(t, l2nodeA, l2info, l1client, &sequencerTxOpts, honestSeqInboxBinding, honestSeqInbox, numMessagesPerBatch, divergeAt)
+	makeBoldBatch(t, l2nodeA, l2info, l1client, &sequencerTxOpts, honestSeqInboxBinding, honestSeqInbox, numMessagesPerBatch, divergeAt, eigenDAOpt)
 	l2info.Accounts["Owner"].Nonce.Store(5)
 	divergeAt = int64(5)
-	makeBoldBatch(t, l2nodeB, l2info, l1client, &sequencerTxOpts, evilSeqInboxBinding, evilSeqInbox, numMessagesPerBatch, divergeAt)
+	makeBoldBatch(t, l2nodeB, l2info, l1client, &sequencerTxOpts, evilSeqInboxBinding, evilSeqInbox, numMessagesPerBatch, divergeAt, eigenDAOpt)
 	totalMessagesPosted += numMessagesPerBatch
 
 	bcA, err := l2nodeA.InboxTracker.GetBatchCount()
@@ -526,6 +551,7 @@ func createTestNodeOnL1ForBoldProtocol(
 	_ *node.Config,
 	rollupStackConf setup.RollupStackConfig,
 	l2infoIn info,
+	useEigenDA bool,
 ) (
 	l2info info, currentNode *arbnode.Node, l2client *ethclient.Client, l2stack *node.Node,
 	l1info info, l1backend *eth.Ethereum, l1client *ethclient.Client, l1stack *node.Node,
@@ -539,6 +565,10 @@ func createTestNodeOnL1ForBoldProtocol(
 		chainConfig = chaininfo.ArbitrumDevTestChainConfig()
 	}
 	nodeConfig.BatchPoster.DataPoster.MaxMempoolTransactions = 18
+
+	if useEigenDA {
+		nodeConfig = nodeConfig.WithEigenDATestConfigParams()
+	}
 	fatalErrChan := make(chan error, 10)
 	withoutClientWrapper := false
 	l1info, l1client, l1backend, l1stack, _ = createTestL1BlockChain(t, nil, withoutClientWrapper)
@@ -782,6 +812,7 @@ func create2ndNodeWithConfigForBoldProtocol(
 	stackConfig *node.Config,
 	rollupStackConf setup.RollupStackConfig,
 	stakeTokenAddr common.Address,
+	useEigenDA bool,
 ) (*ethclient.Client, *arbnode.Node, *solimpl.AssertionChain) {
 	fatalErrChan := make(chan error, 10)
 	l1rpcClient := l1stack.Attach()
@@ -806,6 +837,9 @@ func create2ndNodeWithConfigForBoldProtocol(
 	nodeConfig.BatchPoster.DataPoster.MaxMempoolTransactions = 18
 	if stackConfig == nil {
 		stackConfig = testhelpers.CreateStackConfigForTest(t.TempDir())
+	}
+	if useEigenDA {
+		nodeConfig = nodeConfig.WithEigenDATestConfigParams()
 	}
 	l2stack, err := node.New(stackConfig)
 	Require(t, err)
@@ -870,6 +904,7 @@ func create2ndNodeWithConfigForBoldProtocol(
 	return l2client, l2node, assertionChain
 }
 
+// Unified batch maker: origin-bytes by default, EigenDA when enabled.
 func makeBoldBatch(
 	t *testing.T,
 	l2Node *arbnode.Node,
@@ -880,6 +915,7 @@ func makeBoldBatch(
 	seqInboxAddr common.Address,
 	numMessages,
 	divergeAtIndex int64,
+	eigenDAOpts *EigenDABoldBatchOpts,
 ) {
 	ctx := context.Background()
 
@@ -898,8 +934,66 @@ func makeBoldBatch(
 
 	seqNum := new(big.Int).Lsh(common.Big1, 256)
 	seqNum.Sub(seqNum, common.Big1)
-	tx, err := seqInbox.AddSequencerL2BatchFromOrigin8f111f3c(sequencer, seqNum, message, big.NewInt(1), common.Address{}, big.NewInt(0), big.NewInt(0))
-	Require(t, err)
+
+	var tx *types.Transaction
+	if eigenDAOpts != nil {
+		eig, err := eigenda.NewEigenDA(&eigenda.EigenDAConfig{
+			Enable: true,
+			Rpc:    eigenDAOpts.RPC,
+		})
+		Require(t, err)
+
+		certV1, err := eig.Store(ctx, message)
+		Require(t, err)
+
+		// Cast EigenDA V1 certificate → Solidity-compatible structs
+		bh := bridgegen.BatchHeader{
+			BlobHeadersRoot:       certV1.BlobVerificationProof.BatchMetadata.BatchHeader.BlobHeadersRoot,
+			QuorumNumbers:         certV1.BlobVerificationProof.BatchMetadata.BatchHeader.QuorumNumbers,
+			SignedStakeForQuorums: certV1.BlobVerificationProof.BatchMetadata.BatchHeader.SignedStakeForQuorums,
+			ReferenceBlockNumber:  certV1.BlobVerificationProof.BatchMetadata.BatchHeader.ReferenceBlockNumber,
+		}
+		bm := bridgegen.BatchMetadata{
+			BatchHeader:             bh,
+			SignatoryRecordHash:     certV1.BlobVerificationProof.BatchMetadata.SignatoryRecordHash,
+			ConfirmationBlockNumber: certV1.BlobVerificationProof.BatchMetadata.ConfirmationBlockNumber,
+		}
+		bvp := bridgegen.BlobVerificationProof{
+			BatchId:        certV1.BlobVerificationProof.BatchId,
+			BlobIndex:      certV1.BlobVerificationProof.BlobIndex,
+			BatchMetadata:  bm,
+			InclusionProof: certV1.BlobVerificationProof.InclusionProof,
+			QuorumIndices:  certV1.BlobVerificationProof.QuorumIndices,
+		}
+
+		solQps := make([]bridgegen.QuorumBlobParam, len(certV1.BlobHeader.QuorumBlobParams))
+		for i, qp := range certV1.BlobHeader.QuorumBlobParams {
+			solQps[i] = bridgegen.QuorumBlobParam{
+				QuorumNumber:                    qp.QuorumNumber,
+				AdversaryThresholdPercentage:    qp.AdversaryThresholdPercentage,
+				ConfirmationThresholdPercentage: qp.ConfirmationThresholdPercentage,
+				ChunkLength:                     qp.ChunkLength,
+			}
+		}
+		blobHeader := bridgegen.BlobHeader{
+			Commitment: bridgegen.BN254G1Point{
+				X: certV1.BlobHeader.Commitment.X,
+				Y: certV1.BlobHeader.Commitment.Y,
+			},
+			DataLength:       certV1.BlobHeader.DataLength,
+			QuorumBlobParams: solQps,
+		}
+		daCert := bridgegen.ISequencerInboxEigenDACert{
+			BlobVerificationProof: bvp,
+			BlobHeader:            blobHeader,
+		}
+
+		tx, err = seqInbox.AddSequencerL2BatchFromEigenDA(sequencer, seqNum, daCert, common.Address{}, big.NewInt(1), big.NewInt(0), big.NewInt(0))
+		Require(t, err)
+	} else {
+		tx, err = seqInbox.AddSequencerL2BatchFromOrigin8f111f3c(sequencer, seqNum, message, big.NewInt(1), common.Address{}, big.NewInt(0), big.NewInt(0))
+		Require(t, err)
+	}
 	receipt, err := EnsureTxSucceeded(ctx, backend, tx)
 	Require(t, err)
 
