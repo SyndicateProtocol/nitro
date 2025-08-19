@@ -121,12 +121,12 @@ func parseL2Message(rd io.Reader, poster common.Address, timestamp uint64, reque
 			var err error
 			poster, err = util.AddressFromReader(rd)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to parse syndicate poster: %w", err)
 			}
 		}
 		tx, err := parseUnsignedTx(rd, poster, requestId, chainId, L2MessageKind_UnsignedUserTx)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse unsigned user tx: %w", err)
 		}
 		return types.Transactions{tx}, nil
 	case L2MessageKind_ContractTx:
@@ -134,11 +134,11 @@ func parseL2Message(rd io.Reader, poster common.Address, timestamp uint64, reque
 			var err error
 			poster, err = util.AddressFromReader(rd)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to parse syndicate poster: %w", err)
 			}
 			id, err := util.HashFromReader(rd)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to parse syndicate request id: %w", err)
 			}
 			requestId = &id
 		}
@@ -172,7 +172,7 @@ func parseL2Message(rd io.Reader, poster common.Address, timestamp uint64, reque
 			// ignore invalid batch txs if the chain is a syndicate chain. they may optionally be pruned by the translator as well.
 			if err != nil {
 				if !syndicateBatch {
-					return nil, err
+					return nil, fmt.Errorf("failed to parse nested l2 message: %w", err)
 				}
 				log.Warn("ignoring invalid l2 message", "err", err)
 			} else {
