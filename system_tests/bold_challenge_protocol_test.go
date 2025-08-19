@@ -49,6 +49,7 @@ import (
 	"github.com/offchainlabs/nitro/arbos/l2pricing"
 	"github.com/offchainlabs/nitro/arbstate"
 	"github.com/offchainlabs/nitro/cmd/chaininfo"
+	"github.com/offchainlabs/nitro/daprovider"
 	"github.com/offchainlabs/nitro/eigenda"
 	"github.com/offchainlabs/nitro/execution/gethexec"
 	"github.com/offchainlabs/nitro/staker"
@@ -64,14 +65,12 @@ import (
 
 // Optional EigenDABoldBatchOpts toggle/config.
 type EigenDABoldBatchOpts struct {
-	Enable bool
-	RPC    string
+	RPC string
 }
 
 func TestChallengeProtocolBOLDReadEigenDAInboxChallenge(t *testing.T) {
 	testChallengeProtocolBOLD(t, &EigenDABoldBatchOpts{
-		Enable: true,
-		RPC:    "http://127.0.0.1:4242",
+		RPC: "http://127.0.0.1:4242",
 	})
 }
 
@@ -128,6 +127,7 @@ func testChallengeProtocolBOLD(t *testing.T, eigenDAOpt *EigenDABoldBatchOpts, s
 		nil,
 		sconf,
 		l2info,
+		eigenDAOpts != nil,
 	)
 	defer requireClose(t, l1stack)
 	defer l2nodeA.StopAndWait()
@@ -150,6 +150,7 @@ func testChallengeProtocolBOLD(t *testing.T, eigenDAOpt *EigenDABoldBatchOpts, s
 		nil,
 		sconf,
 		stakeTokenAddr,
+		eigenDAOpts != nil,
 	)
 	defer l2nodeB.StopAndWait()
 
@@ -171,13 +172,26 @@ func testChallengeProtocolBOLD(t *testing.T, eigenDAOpt *EigenDABoldBatchOpts, s
 	_, valStack := createTestValidationNode(t, ctx, &valCfg)
 	blockValidatorConfig := staker.TestBlockValidatorConfig
 
+	var dapReaders []daprovider.Reader = nil
+	if eigenDAOpt != nil {
+		eigenDAService, err := eigenda.NewEigenDA(
+			&eigenda.EigenDAConfig{
+				Enable: true,
+				Rpc:    eigenDAOpt.RPC,
+			})
+		if err != nil {
+			panic(err)
+		}
+		dapReaders = append(dapReaders, eigenda.NewReaderForEigenDA(eigenDAService))
+	}
+
 	statelessA, err := staker.NewStatelessBlockValidator(
 		l2nodeA.InboxReader,
 		l2nodeA.InboxTracker,
 		l2nodeA.TxStreamer,
 		l2nodeA.ExecutionRecorder,
 		l2nodeA.ArbDB,
-		nil,
+		dapReaders,
 		StaticFetcherFrom(t, &blockValidatorConfig),
 		valStack,
 		valCfg.Wasm.RootPath,
@@ -186,14 +200,13 @@ func testChallengeProtocolBOLD(t *testing.T, eigenDAOpt *EigenDABoldBatchOpts, s
 	err = statelessA.Start(ctx)
 	Require(t, err)
 	_, valStackB := createTestValidationNode(t, ctx, &valCfg, spawnerOpts...)
-
 	statelessB, err := staker.NewStatelessBlockValidator(
 		l2nodeB.InboxReader,
 		l2nodeB.InboxTracker,
 		l2nodeB.TxStreamer,
 		l2nodeB.ExecutionRecorder,
 		l2nodeB.ArbDB,
-		nil,
+		dapReaders,
 		StaticFetcherFrom(t, &blockValidatorConfig),
 		valStackB,
 		valCfg.Wasm.RootPath,
@@ -538,6 +551,7 @@ func createTestNodeOnL1ForBoldProtocol(
 	_ *node.Config,
 	rollupStackConf setup.RollupStackConfig,
 	l2infoIn info,
+	useEigenDA bool,
 ) (
 	l2info info, currentNode *arbnode.Node, l2client *ethclient.Client, l2stack *node.Node,
 	l1info info, l1backend *eth.Ethereum, l1client *ethclient.Client, l1stack *node.Node,
@@ -552,7 +566,9 @@ func createTestNodeOnL1ForBoldProtocol(
 	}
 	nodeConfig.BatchPoster.DataPoster.MaxMempoolTransactions = 18
 
-	nodeConfig = nodeConfig.WithEigenDATestConfigParams()
+	if useEigenDA {
+		nodeConfig = nodeConfig.WithEigenDATestConfigParams()
+	}
 	fatalErrChan := make(chan error, 10)
 	withoutClientWrapper := false
 	l1info, l1client, l1backend, l1stack, _ = createTestL1BlockChain(t, nil, withoutClientWrapper)
@@ -796,6 +812,7 @@ func create2ndNodeWithConfigForBoldProtocol(
 	stackConfig *node.Config,
 	rollupStackConf setup.RollupStackConfig,
 	stakeTokenAddr common.Address,
+	useEigenDA bool,
 ) (*ethclient.Client, *arbnode.Node, *solimpl.AssertionChain) {
 	fatalErrChan := make(chan error, 10)
 	l1rpcClient := l1stack.Attach()
@@ -814,14 +831,16 @@ func create2ndNodeWithConfigForBoldProtocol(
 	l1info.SetContract("EvilUpgradeExecutor", addresses.UpgradeExecutor)
 
 	if nodeConfig == nil {
-		nodeConfig = arbnode.ConfigDefaultL1NonSequencerTest().WithEigenDATestConfigParams()
+		nodeConfig = arbnode.ConfigDefaultL1NonSequencerTest()
 	}
 	nodeConfig.ParentChainReader.OldHeaderTimeout = 10 * time.Minute
 	nodeConfig.BatchPoster.DataPoster.MaxMempoolTransactions = 18
 	if stackConfig == nil {
 		stackConfig = testhelpers.CreateStackConfigForTest(t.TempDir())
 	}
-	nodeConfig = nodeConfig.WithEigenDATestConfigParams()
+	if useEigenDA {
+		nodeConfig = nodeConfig.WithEigenDATestConfigParams()
+	}
 	l2stack, err := node.New(stackConfig)
 	Require(t, err)
 
@@ -896,7 +915,7 @@ func makeBoldBatch(
 	seqInboxAddr common.Address,
 	numMessages,
 	divergeAtIndex int64,
-	eigen *EigenDABoldBatchOpts, // nil or {Enable:false} => origin; {Enable:true} => EigenDA
+	eigenDAOpts *EigenDABoldBatchOpts,
 ) {
 	ctx := context.Background()
 
@@ -917,10 +936,10 @@ func makeBoldBatch(
 	seqNum.Sub(seqNum, common.Big1)
 
 	var tx *types.Transaction
-	if eigen != nil && eigen.Enable {
+	if eigenDAOpts != nil {
 		eig, err := eigenda.NewEigenDA(&eigenda.EigenDAConfig{
 			Enable: true,
-			Rpc:    eigen.RPC,
+			Rpc:    eigenDAOpts.RPC,
 		})
 		Require(t, err)
 
