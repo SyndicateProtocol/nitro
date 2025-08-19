@@ -218,6 +218,27 @@ func (r *BlockRecorder) validateChainConfiguration(recordingdb *state.StateDB, c
 	if err != nil {
 		return fmt.Errorf("failed to open initial ArbOS state: %w", err)
 	}
+
+	// Validate chain ID
+	chainId, err := initialArbosState.ChainId()
+	if err != nil {
+		return fmt.Errorf("failed to get chain ID from ArbOS state: %w", err)
+	}
+	if chainId.Cmp(chainConfig.ChainID) != 0 {
+		return fmt.Errorf("chain ID mismatch: got %v, expected %v", chainId, chainConfig.ChainID)
+	}
+
+	// Validate genesis block number
+	genesisNum, err := initialArbosState.GenesisBlockNum()
+	if err != nil {
+		return fmt.Errorf("failed to get genesis block number from ArbOS state: %w", err)
+	}
+	expectedNum := chainConfig.ArbitrumChainParams.GenesisBlockNum
+	if genesisNum != expectedNum {
+		return fmt.Errorf("genesis block number mismatch: got %v, expected %v", genesisNum, expectedNum)
+	}
+
+	// Validate chain config
 	returnedConfigBytes, err := initialArbosState.ChainConfig()
 	if err != nil {
 		return fmt.Errorf("failed to get chain config from ArbOS state: %w", err)
