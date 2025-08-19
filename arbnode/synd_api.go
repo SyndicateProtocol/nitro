@@ -67,7 +67,7 @@ func (a *SyndAPI) BatchFromAcc(ctx context.Context, acc common.Hash) (uint64, er
 		return 0, errors.New("no batches found in inbox tracker")
 	}
 
-	// Linear search through batches (consider optimizing with binary search for large datasets)
+	// Linear search through batches
 	for count > 0 {
 		count--
 		if err := ctx.Err(); err != nil {

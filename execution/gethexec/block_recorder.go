@@ -2,7 +2,9 @@ package gethexec
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -125,7 +127,7 @@ func (r *BlockRecorder) RecordBlocks(
 ) (*execution.RecordResult, error) {
 	// Validate input parameters
 	if len(msgs) == 0 {
-		return nil, fmt.Errorf("cannot record blocks: message array is empty")
+		return nil, errors.New("cannot record blocks: message array is empty")
 	}
 
 	// Get the block number corresponding to the starting message index
@@ -150,11 +152,9 @@ func (r *BlockRecorder) RecordBlocks(
 			return nil, fmt.Errorf("context cancelled while processing message %d: %w", i, err)
 		}
 
-		// Validate chain configuration for the first message
-		if header != nil {
-			if err := r.validateChainConfiguration(recordingdb, chainConfig); err != nil {
-				return nil, fmt.Errorf("chain configuration validation failed: %w", err)
-			}
+		// Validate chain configuration
+		if err := r.validateChainConfiguration(recordingdb, chainConfig); err != nil {
+			return nil, fmt.Errorf("chain configuration validation failed: %w", err)
 		}
 
 		// Produce block from the message
@@ -218,30 +218,19 @@ func (r *BlockRecorder) validateChainConfiguration(recordingdb *state.StateDB, c
 	if err != nil {
 		return fmt.Errorf("failed to open initial ArbOS state: %w", err)
 	}
-
-	// Validate chain ID
-	chainId, err := initialArbosState.ChainId()
-	if err != nil {
-		return fmt.Errorf("failed to get chain ID from ArbOS state: %w", err)
-	}
-	if chainId.Cmp(chainConfig.ChainID) != 0 {
-		return fmt.Errorf("chain ID mismatch: got %v, expected %v", chainId, chainConfig.ChainID)
-	}
-
-	// Validate genesis block number
-	genesisNum, err := initialArbosState.GenesisBlockNum()
-	if err != nil {
-		return fmt.Errorf("failed to get genesis block number from ArbOS state: %w", err)
-	}
-	expectedNum := chainConfig.ArbitrumChainParams.GenesisBlockNum
-	if genesisNum != expectedNum {
-		return fmt.Errorf("genesis block number mismatch: got %v, expected %v", genesisNum, expectedNum)
-	}
-
-	// Validate chain config
-	_, err = initialArbosState.ChainConfig()
+	returnedConfigBytes, err := initialArbosState.ChainConfig()
 	if err != nil {
 		return fmt.Errorf("failed to get chain config from ArbOS state: %w", err)
+	}
+
+	// Unmarshal the chain config
+	returnedConfig := new(params.ChainConfig)
+	if err := returnedConfig.UnmarshalJSON(returnedConfigBytes); err != nil {
+		return fmt.Errorf("failed to unmarshal chain config: %w", err)
+	}
+	// Compare the returned config with the expected config
+	if !reflect.DeepEqual(returnedConfig, chainConfig) {
+		return fmt.Errorf("chain config mismatch: got %v, expected %v", returnedConfig, chainConfig)
 	}
 
 	return nil
