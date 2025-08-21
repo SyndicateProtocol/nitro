@@ -2,6 +2,7 @@ package gethexec
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -246,7 +247,7 @@ func (r *BlockRecorder) validateChainConfiguration(recordingdb *state.StateDB, c
 
 	// Unmarshal the chain config
 	returnedConfig := new(params.ChainConfig)
-	if err := returnedConfig.UnmarshalJSON(returnedConfigBytes); err != nil {
+	if err := json.Unmarshal(returnedConfigBytes, returnedConfig); err != nil {
 		return fmt.Errorf("failed to unmarshal chain config: %w", err)
 	}
 	// Compare the returned config with the expected config
