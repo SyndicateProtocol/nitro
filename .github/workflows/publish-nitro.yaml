@@ -52,4 +52,4 @@ jobs:
             TAG="latest"
           fi
 
-          docker buildx build --target nitro-node --platform linux/amd64,linux/arm64 -t ${{ env.GITHUB_REGISTRY }}/${REPO_LOWER}/nitro:${TAG} --push .
+          docker buildx build --target nitro-node --platform linux/amd64 -t ${{ env.GITHUB_REGISTRY }}/${REPO_LOWER}/nitro:${TAG} --push .

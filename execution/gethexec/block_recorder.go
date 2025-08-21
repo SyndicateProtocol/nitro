@@ -2,8 +2,10 @@ package gethexec
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/offchainlabs/nitro/arbos"
 	"github.com/offchainlabs/nitro/arbos/arbosState"
@@ -207,8 +210,53 @@ func (r *BlockRecorder) RecordBlocks(
 	}, nil
 }
 
-// If msg is nil, this will record block creation up to the point where message would be accessed (for a "too far" proof)
-// If keepreference == true, reference to state of prevHeader is added (no reference added if an error is returned)
+// validateChainConfiguration validates that the ArbOS state matches the expected chain configuration.
+// This includes checking the chain ID, genesis block number, and chain config parameters.
+// This validation is important for ensuring consistency between the recording database and the main chain.
+func (r *BlockRecorder) validateChainConfiguration(recordingdb *state.StateDB, chainConfig *params.ChainConfig) error {
+	initialArbosState, err := arbosState.OpenSystemArbosState(recordingdb, nil, true)
+	if err != nil {
+		return fmt.Errorf("failed to open initial ArbOS state: %w", err)
+	}
+
+	// Validate chain ID
+	chainId, err := initialArbosState.ChainId()
+	if err != nil {
+		return fmt.Errorf("failed to get chain ID from ArbOS state: %w", err)
+	}
+	if chainId.Cmp(chainConfig.ChainID) != 0 {
+		return fmt.Errorf("chain ID mismatch: got %v, expected %v", chainId, chainConfig.ChainID)
+	}
+
+	// Validate genesis block number
+	genesisNum, err := initialArbosState.GenesisBlockNum()
+	if err != nil {
+		return fmt.Errorf("failed to get genesis block number from ArbOS state: %w", err)
+	}
+	expectedNum := chainConfig.ArbitrumChainParams.GenesisBlockNum
+	if genesisNum != expectedNum {
+		return fmt.Errorf("genesis block number mismatch: got %v, expected %v", genesisNum, expectedNum)
+	}
+
+	// Validate chain config
+	returnedConfigBytes, err := initialArbosState.ChainConfig()
+	if err != nil {
+		return fmt.Errorf("failed to get chain config from ArbOS state: %w", err)
+	}
+
+	// Unmarshal the chain config
+	returnedConfig := new(params.ChainConfig)
+	if err := json.Unmarshal(returnedConfigBytes, returnedConfig); err != nil {
+		return fmt.Errorf("failed to unmarshal chain config: %w", err)
+	}
+	// Compare the returned config with the expected config
+	if !reflect.DeepEqual(returnedConfig, chainConfig) {
+		return fmt.Errorf("chain config mismatch: got %v, expected %v", returnedConfig, chainConfig)
+	}
+
+	return nil
+}
+
 func (r *BlockRecorder) RecordBlockCreation(
 	ctx context.Context,
 	pos arbutil.MessageIndex,
