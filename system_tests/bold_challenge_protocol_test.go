@@ -90,7 +90,7 @@ func TestChallengeProtocolBOLDStartStepChallenge(t *testing.T) {
 	testChallengeProtocolBOLD(t, nil, opts...)
 }
 
-func testChallengeProtocolBOLD(t *testing.T, eigenDAOpt *EigenDABoldBatchOpts, spawnerOpts ...server_arb.SpawnerOption) {
+func testChallengeProtocolBOLD(t *testing.T, eigenDAOpts *EigenDABoldBatchOpts, spawnerOpts ...server_arb.SpawnerOption) {
 	goodDir, err := os.MkdirTemp("", "good_*")
 	Require(t, err)
 	evilDir, err := os.MkdirTemp("", "evil_*")
