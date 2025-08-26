@@ -90,7 +90,7 @@ func TestChallengeProtocolBOLDStartStepChallenge(t *testing.T) {
 	testChallengeProtocolBOLD(t, nil, opts...)
 }
 
-func testChallengeProtocolBOLD(t *testing.T, eigenDAOpt *EigenDABoldBatchOpts, spawnerOpts ...server_arb.SpawnerOption) {
+func testChallengeProtocolBOLD(t *testing.T, eigenDAOpts *EigenDABoldBatchOpts, spawnerOpts ...server_arb.SpawnerOption) {
 	goodDir, err := os.MkdirTemp("", "good_*")
 	Require(t, err)
 	evilDir, err := os.MkdirTemp("", "evil_*")
@@ -173,11 +173,11 @@ func testChallengeProtocolBOLD(t *testing.T, eigenDAOpt *EigenDABoldBatchOpts, s
 	blockValidatorConfig := staker.TestBlockValidatorConfig
 
 	var dapReaders []daprovider.Reader = nil
-	if eigenDAOpt != nil {
+	if eigenDAOpts != nil {
 		eigenDAService, err := eigenda.NewEigenDA(
 			&eigenda.EigenDAConfig{
 				Enable: true,
-				Rpc:    eigenDAOpt.RPC,
+				Rpc:    eigenDAOpts.RPC,
 			})
 		if err != nil {
 			panic(err)
@@ -333,19 +333,19 @@ func testChallengeProtocolBOLD(t *testing.T, eigenDAOpt *EigenDABoldBatchOpts, s
 	totalMessagesPosted := int64(0)
 	numMessagesPerBatch := int64(5)
 	divergeAt := int64(-1)
-	makeBoldBatch(t, l2nodeA, l2info, l1client, &sequencerTxOpts, honestSeqInboxBinding, honestSeqInbox, numMessagesPerBatch, divergeAt, eigenDAOpt)
+	makeBoldBatch(t, l2nodeA, l2info, l1client, &sequencerTxOpts, honestSeqInboxBinding, honestSeqInbox, numMessagesPerBatch, divergeAt, eigenDAOpts)
 	l2info.Accounts["Owner"].Nonce.Store(0)
-	makeBoldBatch(t, l2nodeB, l2info, l1client, &sequencerTxOpts, evilSeqInboxBinding, evilSeqInbox, numMessagesPerBatch, divergeAt, eigenDAOpt)
+	makeBoldBatch(t, l2nodeB, l2info, l1client, &sequencerTxOpts, evilSeqInboxBinding, evilSeqInbox, numMessagesPerBatch, divergeAt, eigenDAOpts)
 	totalMessagesPosted += numMessagesPerBatch
 
 	// Next, we post another batch, this time containing more messages.
 	// We diverge at message index 5 within the evil node's batch.
 	l2info.Accounts["Owner"].Nonce.Store(5)
 	numMessagesPerBatch = int64(10)
-	makeBoldBatch(t, l2nodeA, l2info, l1client, &sequencerTxOpts, honestSeqInboxBinding, honestSeqInbox, numMessagesPerBatch, divergeAt, eigenDAOpt)
+	makeBoldBatch(t, l2nodeA, l2info, l1client, &sequencerTxOpts, honestSeqInboxBinding, honestSeqInbox, numMessagesPerBatch, divergeAt, eigenDAOpts)
 	l2info.Accounts["Owner"].Nonce.Store(5)
 	divergeAt = int64(5)
-	makeBoldBatch(t, l2nodeB, l2info, l1client, &sequencerTxOpts, evilSeqInboxBinding, evilSeqInbox, numMessagesPerBatch, divergeAt, eigenDAOpt)
+	makeBoldBatch(t, l2nodeB, l2info, l1client, &sequencerTxOpts, evilSeqInboxBinding, evilSeqInbox, numMessagesPerBatch, divergeAt, eigenDAOpts)
 	totalMessagesPosted += numMessagesPerBatch
 
 	bcA, err := l2nodeA.InboxTracker.GetBatchCount()

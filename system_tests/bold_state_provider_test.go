@@ -371,6 +371,7 @@ func setupBoldStateProvider(t *testing.T, ctx context.Context, blockChallengeHei
 		nil,
 		sconf,
 		l2info,
+		false,
 	)
 
 	valnode.TestValidationConfig.UseJit = false
