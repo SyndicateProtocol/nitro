@@ -173,11 +173,11 @@ func testChallengeProtocolBOLD(t *testing.T, eigenDAOpts *EigenDABoldBatchOpts, 
 	blockValidatorConfig := staker.TestBlockValidatorConfig
 
 	var dapReaders []daprovider.Reader = nil
-	if eigenDAOpt != nil {
+	if eigenDAOpts != nil {
 		eigenDAService, err := eigenda.NewEigenDA(
 			&eigenda.EigenDAConfig{
 				Enable: true,
-				Rpc:    eigenDAOpt.RPC,
+				Rpc:    eigenDAOpts.RPC,
 			})
 		if err != nil {
 			panic(err)
