@@ -3,9 +3,12 @@ package eigenda
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
+	flag "github.com/spf13/pflag"
 )
 
 const (
@@ -24,8 +27,28 @@ type EigenDAReader interface {
 }
 
 type EigenDAConfig struct {
-	Enable bool   `koanf:"enable"`
-	Rpc    string `koanf:"rpc"`
+	Enable bool `koanf:"enable"`
+	// ugh why is this called RPC when its a rest endpoint for eigenda-proxy. this should be called something else
+	// but this code will soon be nuked so it's not worth introducing a breaking config change
+	Rpc string `koanf:"rpc"`
+}
+
+func (cfg *EigenDAConfig) Validate() error {
+	if cfg.Enable && strings.TrimSpace(cfg.Rpc) == "" {
+		return fmt.Errorf("EigenDA enabled but `rpc` value set for EigenDA Proxy host")
+	}
+
+	return nil
+}
+
+var DefaultEigenDAConfig = EigenDAConfig{
+	Enable: false,
+	Rpc:    "",
+}
+
+func EigenDAConfigAddOptions(prefix string, f *flag.FlagSet) {
+	f.Bool(prefix+".enable", DefaultEigenDAConfig.Enable, "whether or not to activate batch posting and/or message derivation using EigenDA")
+	f.String(prefix+".rpc", DefaultEigenDAConfig.Rpc, "url of EigenDA proxy service used to disperse and fetch batches")
 }
 
 type EigenDA struct {
