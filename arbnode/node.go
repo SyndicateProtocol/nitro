@@ -74,7 +74,7 @@ type Config struct {
 	SeqCoordinator           SeqCoordinatorConfig           `koanf:"seq-coordinator"`
 	DataAvailability         das.DataAvailabilityConfig     `koanf:"data-availability"`
 	DAProvider               daclient.ClientConfig          `koanf:"da-provider" reload:"hot"`
-	EigenDA                  eigenda.EigenDAConfig          `koanf:"eigen-da"`
+	EigenDA                  eigenda.EigenDAConfig          `koanf:"eigen-da" reload:"hot"`
 	SyncMonitor              SyncMonitorConfig              `koanf:"sync-monitor"`
 	Dangerous                DangerousConfig                `koanf:"dangerous"`
 	TransactionStreamer      TransactionStreamerConfig      `koanf:"transaction-streamer" reload:"hot"`
@@ -118,6 +118,11 @@ func (c *Config) Validate() error {
 	if err := c.Staker.Validate(); err != nil {
 		return err
 	}
+
+	if err := c.EigenDA.Validate(); err != nil {
+		return err
+	}
+
 	if c.TransactionStreamer.TrackBlockMetadataFrom != 0 && !c.BlockMetadataFetcher.Enable {
 		log.Warn("track-block-metadata-from is set but blockMetadata fetcher is not enabled")
 	}
@@ -148,6 +153,7 @@ func ConfigAddOptions(prefix string, f *flag.FlagSet, feedInputEnable bool, feed
 	SeqCoordinatorConfigAddOptions(prefix+".seq-coordinator", f)
 	das.DataAvailabilityConfigAddNodeOptions(prefix+".data-availability", f)
 	daclient.ClientConfigAddOptions(prefix+".da-provider", f)
+	eigenda.EigenDAConfigAddOptions(prefix+".eigen-da", f)
 	SyncMonitorConfigAddOptions(prefix+".sync-monitor", f)
 	DangerousConfigAddOptions(prefix+".dangerous", f)
 	TransactionStreamerConfigAddOptions(prefix+".transaction-streamer", f)
@@ -170,6 +176,7 @@ var ConfigDefault = Config{
 	SeqCoordinator:           DefaultSeqCoordinatorConfig,
 	DataAvailability:         das.DefaultDataAvailabilityConfig,
 	DAProvider:               daclient.DefaultClientConfig,
+	EigenDA:                  eigenda.DefaultEigenDAConfig,
 	SyncMonitor:              DefaultSyncMonitorConfig,
 	Dangerous:                DefaultDangerousConfig,
 	TransactionStreamer:      DefaultTransactionStreamerConfig,
