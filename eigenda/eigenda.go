@@ -30,7 +30,7 @@ type EigenDAConfig struct {
 	Enable bool `koanf:"enable"`
 	// ugh why is this called RPC when its a rest endpoint for eigenda-proxy. this should be called something else
 	// but this code will soon be nuked so it's not worth introducing a breaking config change
-	Rpc string `koanf:"rpc"`
+	Rpc string `koanf:"rpc" reload:"hot"`
 }
 
 func (cfg *EigenDAConfig) Validate() error {
