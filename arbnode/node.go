@@ -74,7 +74,7 @@ type Config struct {
 	SeqCoordinator           SeqCoordinatorConfig           `koanf:"seq-coordinator"`
 	DataAvailability         das.DataAvailabilityConfig     `koanf:"data-availability"`
 	DAProvider               daclient.ClientConfig          `koanf:"da-provider" reload:"hot"`
-	EigenDA                  eigenda.EigenDAConfig          `koanf:"eigen-da"`
+	EigenDA                  eigenda.EigenDAConfig          `koanf:"eigen-da" reload:"hot"`
 	SyncMonitor              SyncMonitorConfig              `koanf:"sync-monitor"`
 	Dangerous                DangerousConfig                `koanf:"dangerous"`
 	TransactionStreamer      TransactionStreamerConfig      `koanf:"transaction-streamer" reload:"hot"`
