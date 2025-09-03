@@ -243,6 +243,7 @@ RUN ./download-machine.sh consensus-v40 0xdb698a2576298f25448bc092e52cf13b1e2414
 RUN ./download-machine-eigenda.sh consensus-eigenda-v32.1 0x04a297cdd13254c4c6c26388915d416286daf22f3a20e3ebee10400a3129dd17
 RUN ./download-machine-eigenda.sh consensus-eigenda-v32.2 0xc723bd1be9fc564796bd8ce5c158c8b2f55d34afb38303a9fb6a8f0fda376edb
 RUN ./download-machine-eigenda.sh consensus-eigenda-v32.3 0x39a7b951167ada11dc7c81f1707fb06e6710ca8b915b2f49e03c130bf7cd53b1
+RUN ./download-machine-eigenda.sh consensus-eigenda-v40 0x2c9a9d645ae56304c483709fc710a58a0935ed43893179fe4b275e1400503ea7
 
 FROM golang:1.23.1-bookworm AS node-builder
 WORKDIR /workspace
