@@ -34,7 +34,6 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 
 	eigenda_proxy "github.com/Layr-Labs/eigenda-proxy/clients/standard_client"
-	"github.com/offchainlabs/bold/solgen/go/bridgegen"
 	"github.com/offchainlabs/nitro/arbnode/dataposter"
 	"github.com/offchainlabs/nitro/arbnode/dataposter/storage"
 	"github.com/offchainlabs/nitro/arbnode/parent"
