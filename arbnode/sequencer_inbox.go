@@ -179,7 +179,7 @@ func (m *SequencerInboxBatch) getSequencerData(ctx context.Context, client *ethc
 		return data, nil
 
 	case batchDataEigenDA:
-		tx, err := arbutil.GetLogTransaction(ctx, client, m.rawLog)
+		tx, err := arbutil.GetLogTransaction(ctx, client, m.RawLog)
 		if err != nil {
 			return nil, err
 		}
