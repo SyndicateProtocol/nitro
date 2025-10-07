@@ -39,6 +39,8 @@ func initRedisForTest(t *testing.T, ctx context.Context, redisUrl string, nodeNa
 	redisClient.Del(ctx, redisutil.CHOSENSEQ_KEY, redisutil.MSG_COUNT_KEY)
 }
 
+// NOTE: This test was labelled flakey in https://github.com/OffchainLabs/nitro/pull/3758/files
+//       Will be brought back once rebasing to upcoming v3.8.0
 // func TestRedisSeqCoordinatorPriorities(t *testing.T) {
 // 	ctx, cancel := context.WithCancel(context.Background())
 // 	defer cancel()
