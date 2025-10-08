@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/Layr-Labs/eigenda-proxy/clients/memconfig_client"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+
 	"github.com/offchainlabs/nitro/arbnode"
 	"github.com/offchainlabs/nitro/cmd/chaininfo"
 	"github.com/offchainlabs/nitro/cmd/genericconf"
@@ -51,7 +53,9 @@ func testEigenDAProxyBatchPosting(t *testing.T) {
 
 	// Setup L1 chain and contracts
 	builder := NewNodeBuilder(ctx).DefaultConfig(t, true)
+	builder.parallelise = false
 	builder.BuildL1(t)
+
 	// Setup DAS servers
 	l1NodeConfigB := arbnode.ConfigDefaultL1NonSequencerTest()
 
@@ -94,10 +98,10 @@ func testFailOverFromEigenDAToCallData(t *testing.T) {
 
 	// Setup L1 chain and contracts
 	builder := NewNodeBuilder(ctx).DefaultConfig(t, true)
+	builder.parallelise = false
 	builder.BuildL1(t)
 	// Setup DAS servers
 	l1NodeConfigB := arbnode.ConfigDefaultL1NonSequencerTest()
-
 	{
 
 		// Setup DAS config
@@ -188,6 +192,7 @@ func testFailOverFromEigenDAToAnyTrust(t *testing.T) {
 	// Setup L1 chain and contracts
 	builder := NewNodeBuilder(ctx).DefaultConfig(t, true)
 	builder.chainConfig = chaininfo.ArbitrumDevTestDASChainConfig()
+	builder.parallelise = false
 	builder.BuildL1(t)
 
 	arbSys, _ := precompilesgen.NewArbSys(types.ArbSysAddress, builder.L1.Client)
